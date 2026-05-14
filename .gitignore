@@ -5,3 +5,8 @@ coverage/
 .env.local
 .DS_Store
 *.log
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example

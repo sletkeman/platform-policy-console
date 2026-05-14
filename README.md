@@ -26,6 +26,22 @@ The webhook API listens on `http://localhost:3000` by default.
 - `pnpm lint`: Run ESLint.
 - `pnpm typecheck`: Run TypeScript checks.
 
+## Infrastructure
+
+Terraform for the development deployment lives in `infra/terraform/environments/dev`.
+It creates an ECR repository, ECS cluster, one EC2 container host, IAM roles, CloudWatch
+logs, and an SSM parameter for `GITHUB_WEBHOOK_SECRET`.
+
+See `infra/terraform/environments/dev/README.md` for the bootstrap and deploy flow.
+
+## Local Container
+
+```bash
+docker compose up --build
+```
+
+The containerized API listens on `http://localhost:3000`.
+
 ## GitHub Webhook Setup
 
 Create a repository or organization webhook that points to:
