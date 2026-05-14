@@ -1,0 +1,30 @@
+{
+  "name": "platform-policy-console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo for a GitHub webhook powered platform policy console.",
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "build": "corepack pnpm -r build",
+    "check": "corepack pnpm -r check",
+    "dev": "corepack pnpm --filter @platform-policy-console/webhook-api dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "corepack pnpm -r lint",
+    "test": "corepack pnpm -r test",
+    "typecheck": "corepack pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.27.0",
+    "@types/node": "^22.15.18",
+    "eslint": "^9.27.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.1",
+    "vitest": "^3.1.3"
+  }
+}

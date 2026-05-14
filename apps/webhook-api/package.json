@@ -1,0 +1,22 @@
+{
+  "name": "@platform-policy-console/webhook-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test",
+    "dev": "tsx watch src/server.ts",
+    "lint": "eslint .",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@platform-policy-console/github-webhooks": "workspace:*",
+    "fastify": "^5.3.3",
+    "tsx": "^4.19.4",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {}
+}
