@@ -4,4 +4,6 @@ environment           = "dev"
 image_tag             = "latest"
 instance_type         = "t3.micro"
 log_level             = "info"
+acm_certificate_arn   = null
+service_hostname      = null
 github_webhook_secret = "replace-with-a-strong-shared-secret"

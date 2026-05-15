@@ -1,4 +1,6 @@
 import Fastify from "fastify";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
 import { ZodError } from "zod";
 
 import { WebhookVerificationError } from "@platform-policy-console/github-webhooks";
@@ -24,10 +26,52 @@ export async function buildApp(config: AppConfig) {
     }
   });
 
-  app.get("/health", () => ({
-    ok: true,
-    service: "webhook-api"
-  }));
+  await app.register(swagger, {
+    openapi: {
+      info: {
+        title: "Platform Policy Console Webhook API",
+        description: "HTTP API for receiving and validating platform policy webhooks.",
+        version: "0.1.0"
+      },
+      tags: [
+        { name: "system", description: "Operational endpoints" },
+        { name: "webhooks", description: "Inbound webhook receivers" }
+      ]
+    }
+  });
+
+  await app.register(swaggerUi, {
+    routePrefix: "/docs",
+    staticCSP: false,
+    uiConfig: {
+      deepLinking: true,
+      docExpansion: "list"
+    }
+  });
+
+  app.get(
+    "/health",
+    {
+      schema: {
+        tags: ["system"],
+        summary: "Check API health",
+        response: {
+          200: {
+            type: "object",
+            required: ["ok", "service"],
+            properties: {
+              ok: { type: "boolean" },
+              service: { type: "string" }
+            }
+          }
+        }
+      }
+    },
+    () => ({
+      ok: true,
+      service: "webhook-api"
+    })
+  );
 
   registerGitHubWebhookRoutes(app, config);
 

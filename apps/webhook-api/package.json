@@ -13,10 +13,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^5.2.6",
     "@platform-policy-console/github-webhooks": "workspace:*",
     "fastify": "^5.3.3",
     "tsx": "^4.19.4",
     "zod": "^3.24.4"
-  },
-  "devDependencies": {}
+  }
 }

@@ -12,6 +12,29 @@ const config = {
 } as const;
 
 describe("GitHub webhook API", () => {
+  it("serves OpenAPI documentation", async () => {
+    const app = await buildApp(config);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/docs/json"
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      openapi: "3.0.3",
+      info: {
+        title: "Platform Policy Console Webhook API"
+      },
+      paths: {
+        "/health": {},
+        "/webhooks/github": {}
+      }
+    });
+
+    await app.close();
+  });
+
   it("accepts verified GitHub webhooks", async () => {
     const app = await buildApp(config);
     const payload = JSON.stringify({ action: "opened" });

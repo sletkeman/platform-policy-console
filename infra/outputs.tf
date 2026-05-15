@@ -1,11 +1,21 @@
 output "service_url" {
-  description = "Public ECS service URL."
-  value       = "http://${aws_instance.ecs.public_dns}"
+  description = "Public ALB service URL."
+  value       = "${local.service_scheme}://${local.service_host}"
 }
 
 output "github_webhook_url" {
   description = "GitHub webhook delivery URL."
-  value       = "http://${aws_instance.ecs.public_dns}/webhooks/github"
+  value       = "${local.service_scheme}://${local.service_host}/webhooks/github"
+}
+
+output "swagger_docs_url" {
+  description = "Swagger UI URL."
+  value       = "${local.service_scheme}://${local.service_host}/docs"
+}
+
+output "alb_dns_name" {
+  description = "Application Load Balancer DNS name."
+  value       = aws_lb.webhook_api.dns_name
 }
 
 output "ecr_repository_url" {

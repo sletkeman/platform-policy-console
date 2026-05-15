@@ -1,5 +1,8 @@
 locals {
-  name = "${var.project_name}-${var.environment}"
+  name                 = "${var.project_name}-${var.environment}"
+  webhook_api_alb_name = "${substr(local.name, 0, 19)}-webhook-api"
+  service_scheme       = var.acm_certificate_arn == null ? "http" : "https"
+  service_host         = var.service_hostname == null ? aws_lb.webhook_api.dns_name : var.service_hostname
 
   tags = {
     Project     = var.project_name
@@ -69,17 +72,47 @@ resource "aws_ssm_parameter" "github_webhook_secret" {
   value       = var.github_webhook_secret
 }
 
-resource "aws_security_group" "ecs_instance" {
-  name        = "${local.name}-ecs-instance"
-  description = "Public HTTP access for ${local.name} ECS host."
+resource "aws_security_group" "alb" {
+  name        = "${local.name}-alb"
+  description = "Public HTTP and HTTPS access for ${local.name}."
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
     description = "HTTP"
-    from_port   = var.host_port
-    to_port     = var.host_port
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = var.http_ingress_cidrs
+  }
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = var.http_ingress_cidrs
+  }
+
+  egress {
+    description = "All outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "ecs_instance" {
+  name        = "${local.name}-ecs-instance"
+  description = "ALB access for ${local.name} ECS host."
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    description     = "Webhook API from ALB"
+    from_port       = var.host_port
+    to_port         = var.host_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
@@ -192,6 +225,77 @@ resource "aws_instance" "ecs" {
   }
 }
 
+resource "aws_lb" "webhook_api" {
+  name               = local.webhook_api_alb_name
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = data.aws_subnets.default.ids
+}
+
+resource "aws_lb_target_group" "webhook_api" {
+  name        = local.webhook_api_alb_name
+  port        = var.host_port
+  protocol    = "HTTP"
+  target_type = "instance"
+  vpc_id      = data.aws_vpc.default.id
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/health"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.webhook_api.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  dynamic "default_action" {
+    for_each = var.acm_certificate_arn == null ? [1] : []
+
+    content {
+      type             = "forward"
+      target_group_arn = aws_lb_target_group.webhook_api.arn
+    }
+  }
+
+  dynamic "default_action" {
+    for_each = var.acm_certificate_arn == null ? [] : [1]
+
+    content {
+      type = "redirect"
+
+      redirect {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  count = var.acm_certificate_arn == null ? 0 : 1
+
+  load_balancer_arn = aws_lb.webhook_api.arn
+  port              = 443
+  protocol          = "HTTPS"
+  certificate_arn   = var.acm_certificate_arn
+  ssl_policy        = var.alb_ssl_policy
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.webhook_api.arn
+  }
+}
+
 resource "aws_ecs_task_definition" "webhook_api" {
   family                   = "${local.name}-webhook-api"
   requires_compatibilities = ["EC2"]
@@ -258,10 +362,18 @@ resource "aws_ecs_service" "webhook_api" {
   deployment_minimum_healthy_percent = 0
   deployment_maximum_percent         = 100
 
+  load_balancer {
+    target_group_arn = aws_lb_target_group.webhook_api.arn
+    container_name   = "webhook-api"
+    container_port   = 3000
+  }
+
   depends_on = [
     aws_instance.ecs,
     aws_iam_role_policy.task_execution_read_ssm,
     aws_iam_role_policy_attachment.ecs_instance,
-    aws_iam_role_policy_attachment.task_execution
+    aws_iam_role_policy_attachment.task_execution,
+    aws_lb_listener.http,
+    aws_lb_listener.https
   ]
 }

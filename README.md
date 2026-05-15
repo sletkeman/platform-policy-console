@@ -18,6 +18,9 @@ pnpm dev
 
 The webhook API listens on `http://localhost:3000` by default.
 
+Swagger UI is available at `http://localhost:3000/docs` after the API starts.
+The raw OpenAPI document is served from `http://localhost:3000/docs/json`.
+
 ## Scripts
 
 - `pnpm dev`: Run the webhook API in watch mode.
@@ -41,6 +44,8 @@ docker compose up --build
 ```
 
 The containerized API listens on `http://localhost:3000`.
+
+Swagger UI is available at `http://localhost:3000/docs` in the container too.
 
 ## GitHub Webhook Setup
 

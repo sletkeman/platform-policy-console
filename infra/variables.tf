@@ -41,9 +41,27 @@ variable "host_port" {
 }
 
 variable "http_ingress_cidrs" {
-  description = "CIDR ranges allowed to call the public HTTP endpoint."
+  description = "CIDR ranges allowed to call the public ALB HTTP and HTTPS endpoints."
   type        = list(string)
   default     = ["0.0.0.0/0"]
+}
+
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN for the HTTPS listener. Leave null to run the ALB over HTTP only."
+  type        = string
+  default     = null
+}
+
+variable "service_hostname" {
+  description = "Optional custom hostname that points to the ALB and matches the ACM certificate."
+  type        = string
+  default     = null
+}
+
+variable "alb_ssl_policy" {
+  description = "TLS security policy for the HTTPS listener."
+  type        = string
+  default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
 }
 
 variable "log_retention_days" {
