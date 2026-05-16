@@ -1,3 +1,8 @@
+output "aws_region" {
+  description = "AWS region used for the deployment."
+  value       = var.aws_region
+}
+
 output "service_url" {
   description = "Public ALB service URL."
   value       = "${local.service_scheme}://${local.service_host}"

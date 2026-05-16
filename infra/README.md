@@ -61,10 +61,34 @@ From the repository root:
 
 ```bash
 AWS_REGION=us-east-1
-ECR_REPOSITORY_URL=953143184104.dkr.ecr.us-east-1.amazonaws.com/platform-policy-console-dev-webhook-api
+ECR_REPOSITORY_URL="$(terraform -chdir=infra output -raw ecr_repository_url)"
+
 aws ecr get-login-password --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URL"
-docker buildx build --platform linux/amd64 -t "$ECR_REPOSITORY_URL:latest" --push .
+
+docker buildx build \
+  --platform linux/amd64 \
+  --tag "$ECR_REPOSITORY_URL:latest" \
+  --push \
+  .
+```
+
+If Docker login fails, first check which AWS identity the CLI is using:
+
+```bash
+aws sts get-caller-identity
+aws ecr describe-repositories --region "$AWS_REGION"
+```
+
+Common causes are an expired SSO/session token, a different AWS profile than the one
+used for Terraform, a region mismatch, or using the full image tag instead of the
+repository URL when logging in.
+
+To use a named AWS CLI profile:
+
+```bash
+AWS_PROFILE=your-profile aws ecr get-login-password --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin "$ECR_REPOSITORY_URL"
 ```
 
 Then create or update ECS:
@@ -76,6 +100,37 @@ terraform apply
 
 Use the `github_webhook_url` output as the GitHub webhook target.
 Use the `swagger_docs_url` output to open Swagger UI.
+
+## GitHub Actions CD
+
+GitHub Actions is the recommended CI/CD runner for this repo because the source,
+pull requests, and existing CI workflow are already in GitHub. Use AWS for the runtime
+and permissions boundary: GitHub assumes a narrowly scoped AWS IAM role through OIDC,
+pushes the image to ECR, then forces ECS to deploy the new `latest` image.
+
+The deploy workflow expects these GitHub repository variables:
+
+- `AWS_REGION`: AWS region, for example `us-east-1`.
+- `ECR_REPOSITORY_URL`: `terraform output -raw ecr_repository_url`.
+- `ECS_CLUSTER_NAME`: `terraform output -raw ecs_cluster_name`.
+- `ECS_SERVICE_NAME`: `terraform output -raw ecs_service_name`.
+
+It expects this GitHub repository secret:
+
+- `AWS_ROLE_ARN`: IAM role ARN for GitHub Actions.
+
+The IAM role should trust the GitHub OIDC provider and allow:
+
+- `ecr:GetAuthorizationToken`
+- `ecr:BatchCheckLayerAvailability`
+- `ecr:InitiateLayerUpload`
+- `ecr:UploadLayerPart`
+- `ecr:CompleteLayerUpload`
+- `ecr:PutImage`
+- `ecs:UpdateService`
+
+Scope the ECR permissions to this repository where possible and scope `ecs:UpdateService`
+to this ECS service. `ecr:GetAuthorizationToken` must remain resource `*`.
 
 ## Redeploy the Same Tag
 

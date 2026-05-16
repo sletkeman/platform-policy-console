@@ -13,7 +13,8 @@ export async function buildApp(config: AppConfig) {
   const app = Fastify({
     logger: {
       level: config.LOG_LEVEL
-    }
+    },
+    trustProxy: true
   });
 
   app.addContentTypeParser("application/json", { parseAs: "buffer" }, (_request, body, done) => {
