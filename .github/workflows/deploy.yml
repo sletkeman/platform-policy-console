@@ -10,15 +10,17 @@ permissions:
   id-token: write
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
-  ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
-  ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
+      ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+      ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,8 +30,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
+
+      - name: Validate deploy config
+        run: |
+          test -n "$AWS_REGION" || (echo "Missing GitHub variable: AWS_REGION" && exit 1)
+          test -n "$ECR_REPOSITORY_URL" || (echo "Missing GitHub variable: ECR_REPOSITORY_URL" && exit 1)
+          test -n "$ECS_CLUSTER_NAME" || (echo "Missing GitHub variable: ECS_CLUSTER_NAME" && exit 1)
+          test -n "$ECS_SERVICE_NAME" || (echo "Missing GitHub variable: ECS_SERVICE_NAME" && exit 1)
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm check

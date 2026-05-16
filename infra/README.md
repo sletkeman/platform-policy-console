@@ -108,16 +108,30 @@ pull requests, and existing CI workflow are already in GitHub. Use AWS for the r
 and permissions boundary: GitHub assumes a narrowly scoped AWS IAM role through OIDC,
 pushes the image to ECR, then forces ECS to deploy the new `latest` image.
 
-The deploy workflow expects these GitHub repository variables:
+CI runs on pull requests only. The deploy workflow runs on pushes to `main`, which means
+it runs after PR merges once direct commits to `main` are blocked by branch protection.
+It can also be run manually from the Actions tab.
+
+The deploy workflow expects these GitHub variables:
 
 - `AWS_REGION`: AWS region, for example `us-east-1`.
 - `ECR_REPOSITORY_URL`: `terraform output -raw ecr_repository_url`.
 - `ECS_CLUSTER_NAME`: `terraform output -raw ecs_cluster_name`.
 - `ECS_SERVICE_NAME`: `terraform output -raw ecs_service_name`.
 
-It expects this GitHub repository secret:
+Add them under **Settings > Secrets and variables > Actions > Variables** for repository
+variables, or under **Settings > Environments > production** if you prefer to scope them
+to the `production` environment used by the deploy job.
+
+It expects this GitHub secret:
 
 - `AWS_ROLE_ARN`: IAM role ARN for GitHub Actions.
+
+Add it under **Settings > Secrets and variables > Actions > Secrets**, or under
+**Settings > Environments > production** for an environment-scoped secret.
+
+Both workflows set `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` and use Node.js 24 for
+project commands.
 
 The IAM role should trust the GitHub OIDC provider and allow:
 

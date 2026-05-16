@@ -94,23 +94,31 @@ aws ecs update-service \
 
 ## CI/CD
 
-CI runs in GitHub Actions on pull requests and pushes to `main`.
+CI runs in GitHub Actions on pull requests. It runs linting, typechecks, and tests.
 
 CD is configured in `.github/workflows/deploy.yml` and is designed for GitHub Actions
-with AWS OIDC. Configure these repository variables:
+with AWS OIDC. It runs when a PR is merged into `main`, assuming branch protection blocks
+direct commits to `main`, and it can also be run manually from the Actions tab.
+
+Configure these variables in GitHub under **Settings > Secrets and variables > Actions >
+Variables**:
 
 - `AWS_REGION`: AWS region, for example `us-east-1`.
 - `ECR_REPOSITORY_URL`: Terraform output `ecr_repository_url`.
 - `ECS_CLUSTER_NAME`: Terraform output `ecs_cluster_name`.
 - `ECS_SERVICE_NAME`: Terraform output `ecs_service_name`.
 
-Configure this repository secret:
+Configure this secret under **Settings > Secrets and variables > Actions > Secrets**:
 
 - `AWS_ROLE_ARN`: IAM role GitHub Actions can assume to push to ECR and update ECS.
 
-Then either push to `main` or run the deploy workflow manually. The workflow builds the
-Docker image, pushes both `latest` and the commit SHA tag, and forces a new ECS
-deployment.
+If you use the `production` GitHub environment, set the same variables and secret under
+**Settings > Environments > production** instead. The workflow job is attached to that
+environment.
+
+The deploy workflow builds the Docker image, pushes both `latest` and the commit SHA tag,
+and forces a new ECS deployment. Both workflows set
+`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` and run project commands with Node.js 24.
 
 ## GitHub Webhook Setup
 
