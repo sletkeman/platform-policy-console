@@ -8,3 +8,7 @@ acm_certificate_arn   = null
 service_hostname      = null
 github_webhook_secret = "replace-with-a-strong-shared-secret"
 github_token          = null
+
+policy_events_visibility_timeout_seconds = 60
+policy_events_retention_seconds          = 345600
+policy_events_max_receive_count          = 5

@@ -118,6 +118,42 @@ github_token = "github_pat_..."
 Terraform stores the token in SSM Parameter Store as a SecureString and injects it into
 the ECS task as `GITHUB_TOKEN`. Longer term, prefer a GitHub App installation token.
 
+## Policy Event Queue
+
+Terraform creates:
+
+- SNS topic: `policy_events_topic_arn`
+- SQS queue: `policy_events_queue_url`
+- SQS dead-letter queue: `policy_events_dlq_url`
+
+The webhook API publishes pull request policy lifecycle events to SNS:
+
+- `pull_request_policy_requested`
+- `pull_request_policy_completed`
+- `pull_request_policy_failed`
+
+SNS fans those messages into SQS with raw message delivery enabled. The API still performs
+the current PR comment synchronously, but the queue gives us a durable trail for failures
+and a natural handoff point for a future background worker.
+
+Inspect queued events:
+
+```bash
+aws sqs receive-message \
+  --queue-url "$(terraform output -raw policy_events_queue_url)" \
+  --max-number-of-messages 10 \
+  --visibility-timeout 30
+```
+
+Inspect failed events:
+
+```bash
+aws sqs receive-message \
+  --queue-url "$(terraform output -raw policy_events_dlq_url)" \
+  --max-number-of-messages 10 \
+  --visibility-timeout 30
+```
+
 ## GitHub Actions CD
 
 GitHub Actions is the recommended CI/CD runner for this repo because the source,

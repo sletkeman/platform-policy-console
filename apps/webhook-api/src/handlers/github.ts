@@ -8,6 +8,8 @@ import {
 } from "@platform-policy-console/github-webhooks";
 
 import type { AppConfig } from "../config.js";
+import { NoopPolicyEventPublisher } from "../events/policyEvents.js";
+import type { PolicyEventPublisher } from "../events/policyEvents.js";
 import { upsertPullRequestComment } from "../github/comments.js";
 import {
   evaluatePullRequestTitleRules,
@@ -42,7 +44,8 @@ export type GitHubCommentClient = {
 export function registerGitHubWebhookRoutes(
   app: FastifyInstance,
   config: AppConfig,
-  commentClient: GitHubCommentClient = { upsertPullRequestComment }
+  commentClient: GitHubCommentClient = { upsertPullRequestComment },
+  policyEventPublisher: PolicyEventPublisher = new NoopPolicyEventPublisher()
 ) {
   app.post<{ Body: ParsedGitHubWebhookBody }>(
     "/webhooks/github",
@@ -133,8 +136,10 @@ export function registerGitHubWebhookRoutes(
       if (envelope.event === "pull_request") {
         await handlePullRequestWebhook({
           payload: envelope.payload,
+          delivery: envelope.delivery,
           config,
           commentClient,
+          policyEventPublisher,
           log: request.log
         });
       }
@@ -150,13 +155,17 @@ export function registerGitHubWebhookRoutes(
 
 async function handlePullRequestWebhook({
   payload,
+  delivery,
   config,
   commentClient,
+  policyEventPublisher,
   log
 }: {
   payload: GitHubWebhookBody;
+  delivery: string;
   config: AppConfig;
   commentClient: GitHubCommentClient;
+  policyEventPublisher: PolicyEventPublisher;
   log: FastifyInstance["log"];
 }) {
   const pullRequestPayload = parsePullRequestPayload(payload);
@@ -165,6 +174,21 @@ async function handlePullRequestWebhook({
     log.warn({ payload }, "ignored malformed pull_request webhook payload");
     return;
   }
+
+  await publishPolicyEvent(
+    policyEventPublisher,
+    {
+      type: "pull_request_policy_requested",
+      delivery,
+      owner: pullRequestPayload.repository.owner.login,
+      repo: pullRequestPayload.repository.name,
+      pullNumber: pullRequestPayload.pull_request.number,
+      action: pullRequestPayload.action,
+      title: pullRequestPayload.pull_request.title,
+      occurredAt: new Date().toISOString()
+    },
+    log
+  );
 
   const ruleResults = evaluatePullRequestTitleRules({
     action: pullRequestPayload.action,
@@ -180,6 +204,20 @@ async function handlePullRequestWebhook({
   }
 
   if (!config.GITHUB_TOKEN) {
+    await publishPolicyEvent(
+      policyEventPublisher,
+      {
+        type: "pull_request_policy_failed",
+        delivery,
+        owner: pullRequestPayload.repository.owner.login,
+        repo: pullRequestPayload.repository.name,
+        pullNumber: pullRequestPayload.pull_request.number,
+        reason: "GITHUB_TOKEN is not configured",
+        occurredAt: new Date().toISOString()
+      },
+      log
+    );
+
     log.warn(
       {
         owner: pullRequestPayload.repository.owner.login,
@@ -191,13 +229,60 @@ async function handlePullRequestWebhook({
     return;
   }
 
-  const comment = await commentClient.upsertPullRequestComment({
-    owner: pullRequestPayload.repository.owner.login,
-    repo: pullRequestPayload.repository.name,
-    pullNumber: pullRequestPayload.pull_request.number,
-    token: config.GITHUB_TOKEN,
-    body: formatPullRequestRuleComment(ruleResults)
-  });
+  const passed = ruleResults.every((result) => result.passed);
+  let comment: Awaited<ReturnType<GitHubCommentClient["upsertPullRequestComment"]>>;
+
+  try {
+    comment = await commentClient.upsertPullRequestComment({
+      owner: pullRequestPayload.repository.owner.login,
+      repo: pullRequestPayload.repository.name,
+      pullNumber: pullRequestPayload.pull_request.number,
+      token: config.GITHUB_TOKEN,
+      body: formatPullRequestRuleComment(ruleResults)
+    });
+  } catch (error) {
+    await publishPolicyEvent(
+      policyEventPublisher,
+      {
+        type: "pull_request_policy_failed",
+        delivery,
+        owner: pullRequestPayload.repository.owner.login,
+        repo: pullRequestPayload.repository.name,
+        pullNumber: pullRequestPayload.pull_request.number,
+        reason:
+          error instanceof Error ? error.message : "Unknown pull request policy comment failure",
+        occurredAt: new Date().toISOString()
+      },
+      log
+    );
+
+    log.error(
+      {
+        error,
+        owner: pullRequestPayload.repository.owner.login,
+        repo: pullRequestPayload.repository.name,
+        pullNumber: pullRequestPayload.pull_request.number
+      },
+      "failed to comment on pull request policy result"
+    );
+    return;
+  }
+
+  await publishPolicyEvent(
+    policyEventPublisher,
+    {
+      type: "pull_request_policy_completed",
+      delivery,
+      owner: pullRequestPayload.repository.owner.login,
+      repo: pullRequestPayload.repository.name,
+      pullNumber: pullRequestPayload.pull_request.number,
+      passed,
+      commentAction: comment.action,
+      commentUrl: comment.commentUrl,
+      occurredAt: new Date().toISOString()
+    },
+    log
+  );
 
   log.info(
     {
@@ -209,6 +294,18 @@ async function handlePullRequestWebhook({
     },
     "commented on pull request policy result"
   );
+}
+
+async function publishPolicyEvent(
+  policyEventPublisher: PolicyEventPublisher,
+  event: Parameters<PolicyEventPublisher["publish"]>[0],
+  log: FastifyInstance["log"]
+) {
+  try {
+    await policyEventPublisher.publish(event);
+  } catch (error) {
+    log.error({ error, eventType: event.type }, "failed to publish policy event");
+  }
 }
 
 function parsePullRequestPayload(payload: GitHubWebhookBody): PullRequestWebhookPayload | null {

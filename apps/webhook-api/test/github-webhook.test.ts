@@ -8,7 +8,8 @@ const config = {
   NODE_ENV: "test",
   PORT: 3000,
   LOG_LEVEL: "silent",
-  GITHUB_WEBHOOK_SECRET: "secret"
+  GITHUB_WEBHOOK_SECRET: "secret",
+  AWS_REGION: "us-east-1"
 } as const;
 
 afterEach(() => {

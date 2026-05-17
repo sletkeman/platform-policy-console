@@ -88,3 +88,21 @@ variable "github_token" {
   sensitive   = true
   default     = null
 }
+
+variable "policy_events_visibility_timeout_seconds" {
+  description = "Visibility timeout for queued policy events."
+  type        = number
+  default     = 60
+}
+
+variable "policy_events_retention_seconds" {
+  description = "Retention period for queued policy events."
+  type        = number
+  default     = 345600
+}
+
+variable "policy_events_max_receive_count" {
+  description = "Number of failed receives before a policy event moves to the dead-letter queue."
+  type        = number
+  default     = 5
+}

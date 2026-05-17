@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 import { WebhookVerificationError } from "@platform-policy-console/github-webhooks";
 
 import type { AppConfig } from "./config.js";
+import { createPolicyEventPublisher } from "./events/policyEvents.js";
 import type { ParsedGitHubWebhookBody } from "./handlers/github.js";
 import { registerGitHubWebhookRoutes } from "./handlers/github.js";
 
@@ -74,7 +75,15 @@ export async function buildApp(config: AppConfig) {
     })
   );
 
-  registerGitHubWebhookRoutes(app, config);
+  registerGitHubWebhookRoutes(
+    app,
+    config,
+    undefined,
+    createPolicyEventPublisher({
+      topicArn: config.POLICY_EVENTS_TOPIC_ARN,
+      region: config.AWS_REGION
+    })
+  );
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof WebhookVerificationError) {
