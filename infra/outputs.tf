@@ -37,3 +37,18 @@ output "ecs_service_name" {
   description = "ECS service name."
   value       = aws_ecs_service.webhook_api.name
 }
+
+output "policy_events_topic_arn" {
+  description = "SNS topic ARN for policy processing events."
+  value       = aws_sns_topic.policy_events.arn
+}
+
+output "policy_events_queue_url" {
+  description = "SQS queue URL subscribed to policy processing events."
+  value       = aws_sqs_queue.policy_events.id
+}
+
+output "policy_events_dlq_url" {
+  description = "SQS dead-letter queue URL for failed policy events."
+  value       = aws_sqs_queue.policy_events_dlq.id
+}

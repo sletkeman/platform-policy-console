@@ -81,6 +81,56 @@ resource "aws_ssm_parameter" "github_token" {
   value       = var.github_token
 }
 
+resource "aws_sns_topic" "policy_events" {
+  name = "${local.name}-policy-events"
+}
+
+resource "aws_sqs_queue" "policy_events_dlq" {
+  name                      = "${local.name}-policy-events-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue" "policy_events" {
+  name                       = "${local.name}-policy-events"
+  visibility_timeout_seconds = var.policy_events_visibility_timeout_seconds
+  message_retention_seconds  = var.policy_events_retention_seconds
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.policy_events_dlq.arn
+    maxReceiveCount     = var.policy_events_max_receive_count
+  })
+}
+
+resource "aws_sqs_queue_policy" "policy_events" {
+  queue_url = aws_sqs_queue.policy_events.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "sns.amazonaws.com"
+        }
+        Action   = "sqs:SendMessage"
+        Resource = aws_sqs_queue.policy_events.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_sns_topic.policy_events.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_sns_topic_subscription" "policy_events_queue" {
+  topic_arn            = aws_sns_topic.policy_events.arn
+  protocol             = "sqs"
+  endpoint             = aws_sqs_queue.policy_events.arn
+  raw_message_delivery = true
+}
+
 resource "aws_security_group" "alb" {
   name        = "${local.name}-alb"
   description = "Public HTTP and HTTPS access for ${local.name}."
@@ -210,6 +260,39 @@ resource "aws_iam_role_policy" "task_execution_read_ssm" {
   })
 }
 
+resource "aws_iam_role" "task" {
+  name = "${local.name}-task"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "task_publish_policy_events" {
+  name = "${local.name}-publish-policy-events"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "sns:Publish"
+        Resource = aws_sns_topic.policy_events.arn
+      }
+    ]
+  })
+}
+
 resource "aws_instance" "ecs" {
   ami                         = data.aws_ssm_parameter.ecs_optimized_ami.value
   instance_type               = var.instance_type
@@ -312,6 +395,7 @@ resource "aws_ecs_task_definition" "webhook_api" {
   cpu                      = "128"
   memory                   = "384"
   execution_role_arn       = aws_iam_role.task_execution.arn
+  task_role_arn            = aws_iam_role.task.arn
 
   container_definitions = jsonencode([
     {
@@ -339,6 +423,14 @@ resource "aws_ecs_task_definition" "webhook_api" {
         {
           name  = "LOG_LEVEL"
           value = var.log_level
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "POLICY_EVENTS_TOPIC_ARN"
+          value = aws_sns_topic.policy_events.arn
         }
       ]
 
@@ -388,6 +480,7 @@ resource "aws_ecs_service" "webhook_api" {
   depends_on = [
     aws_instance.ecs,
     aws_iam_role_policy.task_execution_read_ssm,
+    aws_iam_role_policy.task_publish_policy_events,
     aws_iam_role_policy_attachment.ecs_instance,
     aws_iam_role_policy_attachment.task_execution,
     aws_lb_listener.http,

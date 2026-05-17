@@ -163,3 +163,9 @@ request or issue comments. Longer term, prefer a GitHub App installation token.
 
 In AWS, set `github_token` in `infra/terraform.tfvars`; Terraform stores it as an SSM
 SecureString and injects it into the ECS task as `GITHUB_TOKEN`.
+
+The API also publishes pull request policy lifecycle events to SNS when
+`POLICY_EVENTS_TOPIC_ARN` is configured. Terraform creates the topic, subscribes an SQS
+queue, and attaches a DLQ. The current API still comments synchronously, while the queue
+captures durable `requested`, `completed`, and `failed` events for inspection, replay,
+and a future worker.
