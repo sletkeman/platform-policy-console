@@ -81,3 +81,10 @@ variable "github_webhook_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "github_token" {
+  description = "Optional GitHub token used by the webhook API to comment on pull requests."
+  type        = string
+  sensitive   = true
+  default     = null
+}

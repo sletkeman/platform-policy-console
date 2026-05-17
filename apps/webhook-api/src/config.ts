@@ -4,7 +4,11 @@ const configSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
-  GITHUB_WEBHOOK_SECRET: z.string().min(1)
+  GITHUB_WEBHOOK_SECRET: z.string().min(1),
+  GITHUB_TOKEN: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional()
+  )
 });
 
 export type AppConfig = z.infer<typeof configSchema>;

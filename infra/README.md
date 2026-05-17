@@ -27,7 +27,8 @@ Create a local variables file:
 cp infra/terraform.tfvars.example infra/terraform.tfvars
 ```
 
-Update `github_webhook_secret`, then initialize Terraform:
+Update `github_webhook_secret`, and set `github_token` if you want the API to comment on
+pull requests. Then initialize Terraform:
 
 ```bash
 cd infra
@@ -101,6 +102,22 @@ terraform apply
 Use the `github_webhook_url` output as the GitHub webhook target.
 Use the `swagger_docs_url` output to open Swagger UI.
 
+## GitHub Credentials
+
+`github_webhook_secret` verifies that inbound webhook deliveries came from GitHub.
+`github_token` authorizes outbound API calls back to GitHub, such as creating or updating
+PR comments.
+
+For early testing, use a fine-grained token with access to the target repository and
+permission to write pull request or issue comments:
+
+```hcl
+github_token = "github_pat_..."
+```
+
+Terraform stores the token in SSM Parameter Store as a SecureString and injects it into
+the ECS task as `GITHUB_TOKEN`. Longer term, prefer a GitHub App installation token.
+
 ## GitHub Actions CD
 
 GitHub Actions is the recommended CI/CD runner for this repo because the source,
@@ -141,6 +158,7 @@ The IAM role should trust the GitHub OIDC provider and allow:
 - `ecr:UploadLayerPart`
 - `ecr:CompleteLayerUpload`
 - `ecr:PutImage`
+- `ecr:BatchGetImage`
 - `ecs:UpdateService`
 
 Scope the ECR permissions to this repository where possible and scope `ecs:UpdateService`
