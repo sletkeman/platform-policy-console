@@ -3,7 +3,6 @@
   "compilerOptions": {
     "paths": {
       "@platform-policy-console/github-api": ["../../packages/github-api/src/index.ts"],
-      "@platform-policy-console/github-webhooks": ["../../packages/github-webhooks/src/index.ts"],
       "@platform-policy-console/policy-core": ["../../packages/policy-core/src/index.ts"]
     },
     "tsBuildInfoFile": "dist/.tsbuildinfo"

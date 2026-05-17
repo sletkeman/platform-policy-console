@@ -136,6 +136,22 @@ SNS fans those messages into SQS with raw message delivery enabled. The API stil
 the current PR comment synchronously, but the queue gives us a durable trail for failures
 and a natural handoff point for a future background worker.
 
+Build the Lambda package before applying Terraform:
+
+```bash
+corepack pnpm build:policy-worker
+```
+
+Terraform deploys a Lambda worker subscribed to the SQS queue. The worker consumes
+`pull_request_policy_requested` events, loads rules from DynamoDB, falls back to the
+default Jira-style PR title rule when no database rules exist, comments on the PR, and
+stores the outcome in the policy runs table.
+
+The DynamoDB tables are:
+
+- `policy_rules_table_name`: editable rule definitions for the future UI.
+- `policy_runs_table_name`: PR policy outcomes for the list page.
+
 Inspect queued events:
 
 ```bash

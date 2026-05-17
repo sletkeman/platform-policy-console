@@ -1,29 +1,21 @@
 {
-  "name": "@platform-policy-console/webhook-api",
+  "name": "@platform-policy-console/policy-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "check": "corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test",
-    "dev": "tsx watch src/server.ts",
     "lint": "eslint .",
-    "start": "node dist/server.js",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1048.0",
-    "@aws-sdk/client-sns": "^3.1048.0",
     "@aws-sdk/lib-dynamodb": "^3.1048.0",
-    "@fastify/cors": "^11.2.0",
-    "@fastify/swagger": "^9.7.0",
-    "@fastify/swagger-ui": "^5.2.6",
     "@platform-policy-console/github-api": "workspace:*",
-    "@platform-policy-console/github-webhooks": "workspace:*",
     "@platform-policy-console/policy-core": "workspace:*",
-    "fastify": "^5.3.3",
-    "tsx": "^4.19.4",
+    "@types/aws-lambda": "^8.10.161",
     "zod": "^3.24.4"
   }
 }

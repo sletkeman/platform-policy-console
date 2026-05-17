@@ -106,3 +106,15 @@ variable "policy_events_max_receive_count" {
   type        = number
   default     = 5
 }
+
+variable "policy_worker_package_path" {
+  description = "Path to the built policy worker Lambda zip package."
+  type        = string
+  default     = "../dist/policy-worker.zip"
+}
+
+variable "policy_worker_timeout_seconds" {
+  description = "Policy worker Lambda timeout."
+  type        = number
+  default     = 30
+}

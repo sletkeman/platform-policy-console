@@ -6,15 +6,15 @@ import {
   verifySignature,
   WebhookVerificationError
 } from "@platform-policy-console/github-webhooks";
+import { upsertPullRequestComment } from "@platform-policy-console/github-api";
+import {
+  evaluatePullRequestTitleRules,
+  formatPullRequestRuleComment
+} from "@platform-policy-console/policy-core";
 
 import type { AppConfig } from "../config.js";
 import { NoopPolicyEventPublisher } from "../events/policyEvents.js";
 import type { PolicyEventPublisher } from "../events/policyEvents.js";
-import { upsertPullRequestComment } from "../github/comments.js";
-import {
-  evaluatePullRequestTitleRules,
-  formatPullRequestRuleComment
-} from "../rules/pullRequestRules.js";
 
 type GitHubWebhookBody = Record<string, unknown>;
 
