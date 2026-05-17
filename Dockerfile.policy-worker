@@ -1,0 +1,28 @@
+FROM node:22-alpine AS deps
+
+WORKDIR /app
+
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/policy-worker/package.json apps/policy-worker/package.json
+COPY packages/github-api/package.json packages/github-api/package.json
+COPY packages/policy-core/package.json packages/policy-core/package.json
+
+RUN corepack pnpm install --frozen-lockfile
+
+FROM deps AS build
+
+COPY . .
+
+RUN corepack pnpm --filter @platform-policy-console/policy-worker... build
+RUN corepack pnpm deploy --filter @platform-policy-console/policy-worker --prod /asset
+
+FROM alpine:3.22 AS package
+
+RUN apk add --no-cache zip
+
+COPY --from=build /asset /asset
+
+WORKDIR /asset
+RUN zip -qr /policy-worker.zip .

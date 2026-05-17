@@ -52,3 +52,18 @@ output "policy_events_dlq_url" {
   description = "SQS dead-letter queue URL for failed policy events."
   value       = aws_sqs_queue.policy_events_dlq.id
 }
+
+output "policy_rules_table_name" {
+  description = "DynamoDB table for policy rule definitions."
+  value       = aws_dynamodb_table.policy_rules.name
+}
+
+output "policy_runs_table_name" {
+  description = "DynamoDB table for policy run outcomes."
+  value       = aws_dynamodb_table.policy_runs.name
+}
+
+output "policy_worker_function_name" {
+  description = "Lambda function name for the policy worker."
+  value       = aws_lambda_function.policy_worker.function_name
+}

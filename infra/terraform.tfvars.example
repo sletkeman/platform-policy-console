@@ -12,3 +12,5 @@ github_token          = null
 policy_events_visibility_timeout_seconds = 60
 policy_events_retention_seconds          = 345600
 policy_events_max_receive_count          = 5
+policy_worker_package_path               = "../dist/policy-worker.zip"
+policy_worker_timeout_seconds            = 30

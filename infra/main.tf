@@ -131,6 +131,48 @@ resource "aws_sns_topic_subscription" "policy_events_queue" {
   raw_message_delivery = true
 }
 
+resource "aws_dynamodb_table" "policy_rules" {
+  name         = "${local.name}-policy-rules"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "scope"
+  range_key    = "ruleKey"
+
+  attribute {
+    name = "scope"
+    type = "S"
+  }
+
+  attribute {
+    name = "ruleKey"
+    type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+}
+
+resource "aws_dynamodb_table" "policy_runs" {
+  name         = "${local.name}-policy-runs"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "repo"
+  range_key    = "runKey"
+
+  attribute {
+    name = "repo"
+    type = "S"
+  }
+
+  attribute {
+    name = "runKey"
+    type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+}
+
 resource "aws_security_group" "alb" {
   name        = "${local.name}-alb"
   description = "Public HTTP and HTTPS access for ${local.name}."
@@ -291,6 +333,98 @@ resource "aws_iam_role_policy" "task_publish_policy_events" {
       }
     ]
   })
+}
+
+resource "aws_iam_role" "policy_worker" {
+  name = "${local.name}-policy-worker"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "policy_worker_basic" {
+  role       = aws_iam_role.policy_worker.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "policy_worker" {
+  name = "${local.name}-policy-worker"
+  role = aws_iam_role.policy_worker.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility"
+        ]
+        Resource = aws_sqs_queue.policy_events.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:Query",
+          "dynamodb:PutItem"
+        ]
+        Resource = [
+          aws_dynamodb_table.policy_rules.arn,
+          aws_dynamodb_table.policy_runs.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "ssm:GetParameters"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_lambda_function" "policy_worker" {
+  function_name    = "${local.name}-policy-worker"
+  role             = aws_iam_role.policy_worker.arn
+  runtime          = "nodejs22.x"
+  handler          = "apps/policy-worker/dist/handler.handler"
+  filename         = var.policy_worker_package_path
+  source_code_hash = filebase64sha256(var.policy_worker_package_path)
+  timeout          = var.policy_worker_timeout_seconds
+
+  environment {
+    variables = {
+      GITHUB_TOKEN            = var.github_token == null ? "" : var.github_token
+      POLICY_RULES_TABLE_NAME = aws_dynamodb_table.policy_rules.name
+      POLICY_RUNS_TABLE_NAME  = aws_dynamodb_table.policy_runs.name
+    }
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.policy_worker_basic,
+    aws_iam_role_policy.policy_worker
+  ]
+}
+
+resource "aws_lambda_event_source_mapping" "policy_worker" {
+  event_source_arn = aws_sqs_queue.policy_events.arn
+  function_name    = aws_lambda_function.policy_worker.arn
+  batch_size       = 1
+  enabled          = var.github_token != null
 }
 
 resource "aws_instance" "ecs" {

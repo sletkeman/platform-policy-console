@@ -169,3 +169,14 @@ The API also publishes pull request policy lifecycle events to SNS when
 queue, and attaches a DLQ. The current API still comments synchronously, while the queue
 captures durable `requested`, `completed`, and `failed` events for inspection, replay,
 and a future worker.
+
+Build the policy worker Lambda package before applying Terraform changes that touch the
+worker:
+
+```bash
+corepack pnpm build:policy-worker
+```
+
+The worker consumes queued policy requests, reads rule definitions from DynamoDB, writes
+PR outcomes to DynamoDB, and comments on the PR. If no database rule is configured yet,
+it uses the built-in Jira-style title rule.
