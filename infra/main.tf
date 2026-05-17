@@ -72,6 +72,15 @@ resource "aws_ssm_parameter" "github_webhook_secret" {
   value       = var.github_webhook_secret
 }
 
+resource "aws_ssm_parameter" "github_token" {
+  count = var.github_token == null ? 0 : 1
+
+  name        = "/${local.name}/github-token"
+  description = "GitHub API token for ${local.name} pull request comments."
+  type        = "SecureString"
+  value       = var.github_token
+}
+
 resource "aws_security_group" "alb" {
   name        = "${local.name}-alb"
   description = "Public HTTP and HTTPS access for ${local.name}."
@@ -333,12 +342,20 @@ resource "aws_ecs_task_definition" "webhook_api" {
         }
       ]
 
-      secrets = [
-        {
-          name      = "GITHUB_WEBHOOK_SECRET"
-          valueFrom = aws_ssm_parameter.github_webhook_secret.arn
-        }
-      ]
+      secrets = concat(
+        [
+          {
+            name      = "GITHUB_WEBHOOK_SECRET"
+            valueFrom = aws_ssm_parameter.github_webhook_secret.arn
+          }
+        ],
+        var.github_token == null ? [] : [
+          {
+            name      = "GITHUB_TOKEN"
+            valueFrom = aws_ssm_parameter.github_token[0].arn
+          }
+        ]
+      )
 
       logConfiguration = {
         logDriver = "awslogs"

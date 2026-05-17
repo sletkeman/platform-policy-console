@@ -130,3 +130,36 @@ https://api.letkeman.trade/webhooks/github
 
 Use `application/json` as the content type and set the secret to the same value as
 `GITHUB_WEBHOOK_SECRET`.
+
+## Pull Request Policy Comments
+
+For `pull_request` webhooks, the API evaluates a JSON-compatible policy definition and
+comments the result back to the PR. The first rule checks that the PR title starts with a
+Jira-style story reference:
+
+```json
+{
+  "id": "pull-request-title-starts-with-jira-story",
+  "version": 1,
+  "enabled": true,
+  "event": "pull_request",
+  "actions": ["opened", "edited", "reopened", "synchronize", "ready_for_review"],
+  "subject": "pull_request.title",
+  "assertion": {
+    "operator": "matches",
+    "pattern": "^\\w{4}-\\d+",
+    "flags": "i"
+  },
+  "messages": {
+    "pass": "PR title starts with a Jira-style story reference.",
+    "fail": "PR title must start with a Jira-style story reference like `ABCD-123`."
+  }
+}
+```
+
+Set `GITHUB_TOKEN` so the API can create or update PR comments. For early testing, use a
+fine-grained token with access to the target repository and permission to write pull
+request or issue comments. Longer term, prefer a GitHub App installation token.
+
+In AWS, set `github_token` in `infra/terraform.tfvars`; Terraform stores it as an SSM
+SecureString and injects it into the ECS task as `GITHUB_TOKEN`.
