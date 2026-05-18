@@ -530,7 +530,7 @@ resource "aws_lambda_function" "policy_worker" {
   function_name    = "${local.name}-policy-worker"
   role             = aws_iam_role.policy_worker.arn
   runtime          = "nodejs22.x"
-  handler          = "apps/policy-worker/dist/handler.handler"
+  handler          = "dist/handler.handler"
   filename         = var.policy_worker_package_path
   source_code_hash = filebase64sha256(var.policy_worker_package_path)
   timeout          = var.policy_worker_timeout_seconds
@@ -709,20 +709,12 @@ resource "aws_ecs_task_definition" "webhook_api" {
         }
       ]
 
-      secrets = concat(
-        [
-          {
-            name      = "GITHUB_WEBHOOK_SECRET"
-            valueFrom = aws_ssm_parameter.github_webhook_secret.arn
-          }
-        ],
-        var.github_token == null ? [] : [
-          {
-            name      = "GITHUB_TOKEN"
-            valueFrom = aws_ssm_parameter.github_token[0].arn
-          }
-        ]
-      )
+      secrets = [
+        {
+          name      = "GITHUB_WEBHOOK_SECRET"
+          valueFrom = aws_ssm_parameter.github_webhook_secret.arn
+        }
+      ]
 
       logConfiguration = {
         logDriver = "awslogs"

@@ -116,7 +116,8 @@ github_token = "github_pat_..."
 ```
 
 Terraform stores the token in SSM Parameter Store as a SecureString and injects it into
-the ECS task as `GITHUB_TOKEN`. Longer term, prefer a GitHub App installation token.
+the worker Lambda as `GITHUB_TOKEN`. Longer term, prefer a GitHub App installation
+token.
 
 ## Policy Event Queue
 
@@ -126,15 +127,12 @@ Terraform creates:
 - SQS queue: `policy_events_queue_url`
 - SQS dead-letter queue: `policy_events_dlq_url`
 
-The webhook API publishes pull request policy lifecycle events to SNS:
+The webhook API publishes pull request policy request events to SNS:
 
 - `pull_request_policy_requested`
-- `pull_request_policy_completed`
-- `pull_request_policy_failed`
 
-SNS fans those messages into SQS with raw message delivery enabled. The API still performs
-the current PR comment synchronously, but the queue gives us a durable trail for failures
-and a natural handoff point for a future background worker.
+SNS fans those messages into SQS with raw message delivery enabled. The worker Lambda
+consumes the queue, evaluates rules, writes outcomes to DynamoDB, and comments on the PR.
 
 Build the Lambda package before applying Terraform:
 

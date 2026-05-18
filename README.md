@@ -133,9 +133,10 @@ Use `application/json` as the content type and set the secret to the same value 
 
 ## Pull Request Policy Comments
 
-For `pull_request` webhooks, the API evaluates a JSON-compatible policy definition and
-comments the result back to the PR. The first rule checks that the PR title starts with a
-Jira-style story reference:
+For `pull_request` webhooks, the API verifies the GitHub signature and publishes a
+policy request event. The worker Lambda evaluates JSON-compatible policy definitions,
+writes the outcome to DynamoDB, and comments the result back to the PR. The first rule
+checks that the PR title starts with a Jira-style story reference:
 
 ```json
 {
@@ -157,18 +158,17 @@ Jira-style story reference:
 }
 ```
 
-Set `GITHUB_TOKEN` so the API can create or update PR comments. For early testing, use a
-fine-grained token with access to the target repository and permission to write pull
-request or issue comments. Longer term, prefer a GitHub App installation token.
+Set `GITHUB_TOKEN` for the worker Lambda so it can create or update PR comments. For
+early testing, use a fine-grained token with access to the target repository and
+permission to write pull request or issue comments. Longer term, prefer a GitHub App
+installation token.
 
 In AWS, set `github_token` in `infra/terraform.tfvars`; Terraform stores it as an SSM
-SecureString and injects it into the ECS task as `GITHUB_TOKEN`.
+SecureString and injects it into the worker Lambda as `GITHUB_TOKEN`.
 
-The API also publishes pull request policy lifecycle events to SNS when
-`POLICY_EVENTS_TOPIC_ARN` is configured. Terraform creates the topic, subscribes an SQS
-queue, and attaches a DLQ. The current API still comments synchronously, while the queue
-captures durable `requested`, `completed`, and `failed` events for inspection, replay,
-and a future worker.
+Terraform creates the SNS topic, subscribes an SQS queue, and attaches a DLQ. The API
+publishes durable `requested` events, and the worker handles evaluation, PR comments,
+and persistence.
 
 Build the policy worker Lambda package before applying Terraform changes that touch the
 worker:
