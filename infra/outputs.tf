@@ -67,3 +67,23 @@ output "policy_worker_function_name" {
   description = "Lambda function name for the policy worker."
   value       = aws_lambda_function.policy_worker.function_name
 }
+
+output "ui_bucket_name" {
+  description = "S3 bucket for the static UI."
+  value       = aws_s3_bucket.ui.bucket
+}
+
+output "ui_cloudfront_domain_name" {
+  description = "CloudFront distribution domain for the static UI."
+  value       = aws_cloudfront_distribution.ui.domain_name
+}
+
+output "ui_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for the static UI."
+  value       = aws_cloudfront_distribution.ui.id
+}
+
+output "ui_url" {
+  description = "Static UI URL."
+  value       = var.ui_hostname == null ? "https://${aws_cloudfront_distribution.ui.domain_name}" : "https://${var.ui_hostname}"
+}

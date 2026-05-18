@@ -11,5 +11,8 @@ services:
       GITHUB_TOKEN:
       AWS_REGION: us-east-1
       POLICY_EVENTS_TOPIC_ARN:
+      POLICY_RULES_TABLE_NAME:
+      POLICY_RUNS_TABLE_NAME:
+      UI_CORS_ORIGIN: http://localhost:5173
     ports:
       - "3000:3000"

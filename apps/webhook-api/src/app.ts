@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import { ZodError } from "zod";
@@ -6,9 +7,11 @@ import { ZodError } from "zod";
 import { WebhookVerificationError } from "@platform-policy-console/github-webhooks";
 
 import type { AppConfig } from "./config.js";
+import { createDynamoDocumentClient } from "./data/dynamo.js";
 import { createPolicyEventPublisher } from "./events/policyEvents.js";
 import type { ParsedGitHubWebhookBody } from "./handlers/github.js";
 import { registerGitHubWebhookRoutes } from "./handlers/github.js";
+import { registerPolicyAdminRoutes } from "./handlers/3.js";
 
 export async function buildApp(config: AppConfig) {
   const app = Fastify({
@@ -26,6 +29,11 @@ export async function buildApp(config: AppConfig) {
     } catch (error) {
       done(error as Error);
     }
+  });
+
+  await app.register(cors, {
+    origin: config.UI_CORS_ORIGIN ?? false,
+    methods: ["GET", "PUT", "DELETE", "OPTIONS"]
   });
 
   await app.register(swagger, {
@@ -84,6 +92,10 @@ export async function buildApp(config: AppConfig) {
       region: config.AWS_REGION
     })
   );
+
+  if (config.POLICY_RULES_TABLE_NAME && config.POLICY_RUNS_TABLE_NAME) {
+    registerPolicyAdminRoutes(app, config, createDynamoDocumentClient(config));
+  }
 
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof WebhookVerificationError) {

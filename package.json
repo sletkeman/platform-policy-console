@@ -11,7 +11,9 @@
   "scripts": {
     "build": "corepack pnpm -r build",
     "build:policy-worker": "mkdir -p dist && docker build --output type=local,dest=dist -f Dockerfile.policy-worker .",
+    "build:ui": "corepack pnpm --filter @platform-policy-console/ui build",
     "check": "corepack pnpm -r check",
+    "deploy:ui": "aws s3 sync apps/ui/dist s3://$(terraform -chdir=infra output -raw ui_bucket_name) --delete && aws cloudfront create-invalidation --distribution-id $(terraform -chdir=infra output -raw ui_cloudfront_distribution_id) --paths '/*'",
     "dev": "corepack pnpm --filter @platform-policy-console/webhook-api dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

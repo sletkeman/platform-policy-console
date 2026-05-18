@@ -1,0 +1,244 @@
+:root {
+  color: #15201c;
+  background: #f5f7f6;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  line-height: 1.45;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 1px solid #1d332b;
+  background: #1d332b;
+  color: #ffffff;
+  cursor: pointer;
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #b9c5bf;
+  background: #ffffff;
+  color: #15201c;
+  min-height: 36px;
+  padding: 7px 9px;
+}
+
+textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.topbar,
+.toolbar,
+.metrics,
+.layout,
+.panelHeader,
+.ruleItem {
+  display: flex;
+  gap: 16px;
+}
+
+.topbar {
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #d7dedb;
+  padding-bottom: 18px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 30px;
+  font-weight: 720;
+}
+
+h2 {
+  font-size: 18px;
+}
+
+.topbar p,
+label,
+small,
+.empty {
+  color: #607069;
+  font-size: 13px;
+}
+
+.toolbar {
+  align-items: end;
+  margin: 22px 0;
+}
+
+.toolbar label {
+  flex: 1;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+}
+
+.metrics {
+  margin-bottom: 22px;
+}
+
+.metrics div {
+  flex: 1;
+  border-top: 3px solid #3a7666;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.metrics span {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.layout {
+  align-items: flex-start;
+}
+
+.panel {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
+  border: 1px solid #d7dedb;
+}
+
+.panelHeader {
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  border-bottom: 1px solid #d7dedb;
+  padding: 12px 14px;
+}
+
+.table {
+  overflow-x: auto;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 80px minmax(260px, 1fr) 90px 180px;
+  gap: 12px;
+  align-items: center;
+  min-height: 48px;
+  border-bottom: 1px solid #edf1ef;
+  color: inherit;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+.row.header {
+  color: #607069;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.passed,
+.failed {
+  font-weight: 700;
+}
+
+.passed {
+  color: #19754f;
+}
+
+.failed {
+  color: #a33b2f;
+}
+
+.empty {
+  padding: 16px;
+}
+
+.ruleForm {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.checkbox {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.checkbox input {
+  width: 16px;
+  min-height: 16px;
+}
+
+.rulesList {
+  border-top: 1px solid #d7dedb;
+}
+
+.ruleItem {
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #edf1ef;
+  padding: 10px 14px;
+}
+
+.ruleItem button:first-child {
+  border: 0;
+  background: transparent;
+  color: #1d332b;
+  padding: 0;
+  text-align: left;
+}
+
+@media (max-width: 900px) {
+  .topbar,
+  .toolbar,
+  .metrics,
+  .layout {
+    flex-direction: column;
+  }
+
+  .panel,
+  .toolbar label,
+  .metrics div {
+    width: 100%;
+  }
+}

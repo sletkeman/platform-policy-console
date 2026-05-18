@@ -58,6 +58,12 @@ variable "service_hostname" {
   default     = null
 }
 
+variable "ui_hostname" {
+  description = "Optional custom hostname for the static UI CloudFront distribution."
+  type        = string
+  default     = null
+}
+
 variable "alb_ssl_policy" {
   description = "TLS security policy for the HTTPS listener."
   type        = string
