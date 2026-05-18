@@ -111,9 +111,6 @@ importers:
       '@fastify/swagger-ui':
         specifier: ^5.2.6
         version: 5.2.6
-      '@platform-policy-console/github-api':
-        specifier: workspace:*
-        version: link:../../packages/github-api
       '@platform-policy-console/github-webhooks':
         specifier: workspace:*
         version: link:../../packages/github-webhooks
