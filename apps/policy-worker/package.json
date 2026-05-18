@@ -17,5 +17,8 @@
     "@platform-policy-console/policy-core": "workspace:*",
     "@types/aws-lambda": "^8.10.161",
     "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
   }
 }
