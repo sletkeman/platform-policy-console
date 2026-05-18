@@ -86,7 +86,6 @@ export async function buildApp(config: AppConfig) {
   registerGitHubWebhookRoutes(
     app,
     config,
-    undefined,
     createPolicyEventPublisher({
       topicArn: config.POLICY_EVENTS_TOPIC_ARN,
       region: config.AWS_REGION

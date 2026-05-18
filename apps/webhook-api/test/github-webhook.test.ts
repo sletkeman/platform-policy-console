@@ -86,9 +86,9 @@ describe("GitHub webhook API", () => {
     await app.close();
   });
 
-  it("comments when a pull request title passes policy", async () => {
-    const fetchMock = mockGitHubComments([]);
-    const app = await buildApp({ ...config, GITHUB_TOKEN: "github-token" });
+  it("does not comment from the API when a pull request title passes policy", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const app = await buildApp(config);
     const payload = JSON.stringify(
       createPullRequestPayload({ title: "ABCD-123 Add policy check" })
     );
@@ -106,25 +106,14 @@ describe("GitHub webhook API", () => {
     });
 
     expect(response.statusCode).toBe(202);
-    const commentRequest = getFetchCall(fetchMock, 1);
-    expect(commentRequest.url).toBe(
-      "https://api.github.com/repos/sletkeman/platform-policy-console/issues/42/comments"
-    );
-    expect(commentRequest.init.method).toBe("POST");
-    expect(commentRequest.body).toContain("Platform policy checks passed");
+    expect(fetchMock).not.toHaveBeenCalled();
 
     await app.close();
   });
 
-  it("comments when a pull request title fails policy", async () => {
-    const fetchMock = mockGitHubComments([
-      {
-        id: 101,
-        body: "<!-- platform-policy-console:pull-request-policy -->\nold body",
-        html_url: "https://github.com/sletkeman/platform-policy-console/pull/42#issuecomment-101"
-      }
-    ]);
-    const app = await buildApp({ ...config, GITHUB_TOKEN: "github-token" });
+  it("does not comment from the API when a pull request title fails policy", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const app = await buildApp(config);
     const payload = JSON.stringify(createPullRequestPayload({ title: "Add policy check" }));
 
     const response = await app.inject({
@@ -140,13 +129,7 @@ describe("GitHub webhook API", () => {
     });
 
     expect(response.statusCode).toBe(202);
-    const commentRequest = getFetchCall(fetchMock, 1);
-    expect(commentRequest.url).toBe(
-      "https://api.github.com/repos/sletkeman/platform-policy-console/issues/comments/101"
-    );
-    expect(commentRequest.init.method).toBe("PATCH");
-    expect(commentRequest.body).toContain("Platform policy checks failed");
-    expect(commentRequest.body).toContain("PR title must start with a Jira-style story reference");
+    expect(fetchMock).not.toHaveBeenCalled();
 
     await app.close();
   });
@@ -165,42 +148,5 @@ function createPullRequestPayload({ title }: { title: string }) {
       number: 42,
       title
     }
-  };
-}
-
-function mockGitHubComments(comments: Array<{ id: number; body: string; html_url: string }>) {
-  return vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
-    const method = init?.method ?? "GET";
-
-    if (method === "GET") {
-      return Promise.resolve(Response.json(comments));
-    }
-
-    return Promise.resolve(
-      Response.json({
-        id: comments[0]?.id ?? 102,
-        html_url: "https://github.com/sletkeman/platform-policy-console/pull/42#issuecomment-102"
-      })
-    );
-  });
-}
-
-function getFetchCall(fetchMock: ReturnType<typeof mockGitHubComments>, index: number) {
-  const call = fetchMock.mock.calls[index];
-
-  if (!call) {
-    throw new Error(`Expected fetch call ${index} to exist`);
-  }
-
-  const [url, init] = call;
-
-  if (typeof url !== "string" || !init || typeof init.body !== "string") {
-    throw new Error(`Expected fetch call ${index} to include a URL and JSON body`);
-  }
-
-  return {
-    url,
-    init,
-    body: init.body
   };
 }
