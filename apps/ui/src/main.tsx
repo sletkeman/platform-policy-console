@@ -36,7 +36,7 @@ type PolicyRun = {
   createdAt?: string;
 };
 
-const apiBaseUrl = String(import.meta.env.VITE_API_BASE_URL ?? "");
+const apiBaseUrl = resolveApiBaseUrl();
 const defaultRepo = "sletkeman/platform-policy-console";
 const defaultScope = `repo#${defaultRepo}`;
 const fallbackRule: Rule = {
@@ -258,23 +258,55 @@ function App() {
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const url = `${apiBaseUrl}${path}`;
+  const response = await fetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
       ...init?.headers
     }
   });
+  const contentType = response.headers.get("content-type") ?? "";
+  const body = await response.text();
 
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    throw new Error(`${response.status} ${response.statusText}${body ? `: ${body.slice(0, 120)}` : ""}`);
   }
 
-  return (await response.json()) as T;
+  if (!contentType.includes("application/json")) {
+    const responseType = body.trimStart().startsWith("<") ? "HTML" : contentType || "unknown content";
+    throw new Error(`Expected JSON from ${url}, got ${responseType}`);
+  }
+
+  return JSON.parse(body) as T;
 }
 
 function formatDate(value: string | undefined) {
   return value ? new Date(value).toLocaleString() : "";
+}
+
+function resolveApiBaseUrl() {
+  const configured = String(import.meta.env.VITE_API_BASE_URL ?? "").trim();
+
+  if (configured) {
+    return configured.replace(/\/$/, "");
+  }
+
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const { hostname, protocol } = window.location;
+
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "";
+  }
+
+  if (hostname.startsWith("ui.")) {
+    return `${protocol}//api.${hostname.slice(3)}`;
+  }
+
+  return "";
 }
 
 createRoot(document.getElementById("root") as HTMLElement).render(

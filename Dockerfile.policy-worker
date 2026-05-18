@@ -16,7 +16,13 @@ FROM deps AS build
 COPY . .
 
 RUN corepack pnpm --filter @platform-policy-console/policy-worker... build
-RUN corepack pnpm deploy --filter @platform-policy-console/policy-worker --prod /asset
+RUN mkdir -p /asset/dist && \
+  corepack pnpm --filter @platform-policy-console/policy-worker exec esbuild src/handler.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=cjs \
+  --outfile=/asset/dist/handler.js
 
 FROM alpine:3.22 AS package
 
