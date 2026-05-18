@@ -69,6 +69,28 @@ importers:
         specifier: ^3.24.4
         version: 3.25.76
 
+  apps/ui:
+    dependencies:
+      '@vitejs/plugin-react':
+        specifier: ^6.0.2
+        version: 6.0.2(vite@8.0.13(@types/node@22.19.19)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.0))
+      react:
+        specifier: ^19.2.6
+        version: 19.2.6
+      react-dom:
+        specifier: ^19.2.6
+        version: 19.2.6(react@19.2.6)
+      vite:
+        specifier: ^8.0.13
+        version: 8.0.13(@types/node@22.19.19)(esbuild@0.27.7)(tsx@4.21.0)(yaml@2.9.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+
   apps/webhook-api:
     dependencies:
       '@aws-sdk/client-dynamodb':

@@ -7,7 +7,10 @@ const configSchema = z.object({
   GITHUB_WEBHOOK_SECRET: z.string().min(1),
   GITHUB_TOKEN: optionalNonEmptyString(),
   AWS_REGION: z.string().min(1).default("us-east-1"),
-  POLICY_EVENTS_TOPIC_ARN: optionalNonEmptyString()
+  POLICY_EVENTS_TOPIC_ARN: optionalNonEmptyString(),
+  POLICY_RULES_TABLE_NAME: optionalNonEmptyString(),
+  POLICY_RUNS_TABLE_NAME: optionalNonEmptyString(),
+  UI_CORS_ORIGIN: optionalNonEmptyString()
 });
 
 export type AppConfig = z.infer<typeof configSchema>;

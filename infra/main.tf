@@ -3,6 +3,7 @@ locals {
   webhook_api_alb_name = "${substr(local.name, 0, 19)}-webhook-api"
   service_scheme       = var.acm_certificate_arn == null ? "http" : "https"
   service_host         = var.service_hostname == null ? aws_lb.webhook_api.dns_name : var.service_hostname
+  ui_origin_id         = "${local.name}-ui-s3"
 
   tags = {
     Project     = var.project_name
@@ -25,6 +26,8 @@ data "aws_subnets" "default" {
 data "aws_ssm_parameter" "ecs_optimized_ami" {
   name = "/aws/service/ecs/optimized-ami/amazon-linux-2023/recommended/image_id"
 }
+
+data "aws_caller_identity" "current" {}
 
 resource "aws_ecr_repository" "webhook_api" {
   name                 = "${local.name}-webhook-api"
@@ -171,6 +174,106 @@ resource "aws_dynamodb_table" "policy_runs" {
   point_in_time_recovery {
     enabled = true
   }
+}
+
+resource "aws_s3_bucket" "ui" {
+  bucket = "${local.name}-${data.aws_caller_identity.current.account_id}-ui"
+}
+
+resource "aws_s3_bucket_public_access_block" "ui" {
+  bucket = aws_s3_bucket.ui.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_cloudfront_origin_access_control" "ui" {
+  name                              = "${local.name}-ui"
+  description                       = "CloudFront access to ${local.name} UI bucket."
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+resource "aws_cloudfront_distribution" "ui" {
+  enabled             = true
+  default_root_object = "index.html"
+  aliases             = var.ui_hostname == null ? [] : [var.ui_hostname]
+
+  origin {
+    domain_name              = aws_s3_bucket.ui.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.ui.id
+    origin_id                = local.ui_origin_id
+  }
+
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = local.ui_origin_id
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+  }
+
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn            = var.ui_hostname == null ? null : var.acm_certificate_arn
+    cloudfront_default_certificate = var.ui_hostname == null
+    minimum_protocol_version       = var.ui_hostname == null ? null : "TLSv1.2_2021"
+    ssl_support_method             = var.ui_hostname == null ? null : "sni-only"
+  }
+}
+
+resource "aws_s3_bucket_policy" "ui" {
+  bucket = aws_s3_bucket.ui.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.ui.arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.ui.arn
+          }
+        }
+      }
+    ]
+  })
 }
 
 resource "aws_security_group" "alb" {
@@ -335,6 +438,30 @@ resource "aws_iam_role_policy" "task_publish_policy_events" {
   })
 }
 
+resource "aws_iam_role_policy" "task_manage_policy_data" {
+  name = "${local.name}-manage-policy-data"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:DeleteItem",
+          "dynamodb:Query",
+          "dynamodb:PutItem",
+          "dynamodb:Scan"
+        ]
+        Resource = [
+          aws_dynamodb_table.policy_rules.arn,
+          aws_dynamodb_table.policy_runs.arn
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "policy_worker" {
   name = "${local.name}-policy-worker"
 
@@ -377,8 +504,10 @@ resource "aws_iam_role_policy" "policy_worker" {
       {
         Effect = "Allow"
         Action = [
+          "dynamodb:DeleteItem",
           "dynamodb:Query",
-          "dynamodb:PutItem"
+          "dynamodb:PutItem",
+          "dynamodb:Scan"
         ]
         Resource = [
           aws_dynamodb_table.policy_rules.arn,
@@ -565,6 +694,18 @@ resource "aws_ecs_task_definition" "webhook_api" {
         {
           name  = "POLICY_EVENTS_TOPIC_ARN"
           value = aws_sns_topic.policy_events.arn
+        },
+        {
+          name  = "POLICY_RULES_TABLE_NAME"
+          value = aws_dynamodb_table.policy_rules.name
+        },
+        {
+          name  = "POLICY_RUNS_TABLE_NAME"
+          value = aws_dynamodb_table.policy_runs.name
+        },
+        {
+          name  = "UI_CORS_ORIGIN"
+          value = var.ui_hostname == null ? "https://${aws_cloudfront_distribution.ui.domain_name}" : "https://${var.ui_hostname}"
         }
       ]
 
@@ -614,6 +755,7 @@ resource "aws_ecs_service" "webhook_api" {
   depends_on = [
     aws_instance.ecs,
     aws_iam_role_policy.task_execution_read_ssm,
+    aws_iam_role_policy.task_manage_policy_data,
     aws_iam_role_policy.task_publish_policy_events,
     aws_iam_role_policy_attachment.ecs_instance,
     aws_iam_role_policy_attachment.task_execution,

@@ -180,3 +180,26 @@ corepack pnpm build:policy-worker
 The worker consumes queued policy requests, reads rule definitions from DynamoDB, writes
 PR outcomes to DynamoDB, and comments on the PR. If no database rule is configured yet,
 it uses the built-in Jira-style title rule.
+
+## Web UI
+
+The React console lives in `apps/ui`. It lists recent PR policy outcomes and provides
+basic CRUD for rule definitions in DynamoDB.
+
+For local development, start the API and UI in separate shells:
+
+```bash
+corepack pnpm dev
+corepack pnpm --filter @platform-policy-console/ui dev
+```
+
+Build and deploy the static UI after Terraform creates the S3 bucket and CloudFront
+distribution:
+
+```bash
+VITE_API_BASE_URL=https://api.letkeman.trade corepack pnpm build:ui
+corepack pnpm deploy:ui
+```
+
+Set `ui_hostname = "ui.letkeman.trade"` and use an ACM certificate that includes that
+hostname. The `ui_url` Terraform output shows the final URL.

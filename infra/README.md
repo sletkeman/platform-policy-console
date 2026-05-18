@@ -152,6 +152,23 @@ The DynamoDB tables are:
 - `policy_rules_table_name`: editable rule definitions for the future UI.
 - `policy_runs_table_name`: PR policy outcomes for the list page.
 
+## Static UI
+
+Terraform creates a private S3 bucket and CloudFront distribution for the React UI. Set
+`ui_hostname = "ui.letkeman.trade"` and use an ACM certificate ARN that includes that
+hostname. If `ui_hostname` is `null`, use the generated CloudFront domain from
+`ui_cloudfront_domain_name`.
+
+Build and publish the UI from the repository root:
+
+```bash
+VITE_API_BASE_URL="$(terraform output -raw service_url)" corepack pnpm build:ui
+corepack pnpm deploy:ui
+```
+
+The API receives `UI_CORS_ORIGIN` from Terraform so the static UI can call the policy
+CRUD and run-list endpoints.
+
 Inspect queued events:
 
 ```bash

@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "webhook-api",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": [
+        "pnpm",
+        "--filter",
+        "@platform-policy-console/webhook-api",
+        "exec",
+        "tsx",
+        "src/server.ts"
+      ],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "3000",
+        "LOG_LEVEL": "debug",
+        "GITHUB_WEBHOOK_SECRET": "replace-with-a-strong-shared-secret",
+        "GITHUB_TOKEN": "",
+        "AWS_REGION": "us-east-1",
+        "POLICY_EVENTS_TOPIC_ARN": "",
+        "POLICY_RULES_TABLE_NAME": "platform-policy-console-dev-policy-rules",
+        "POLICY_RUNS_TABLE_NAME": "platform-policy-console-dev-policy-runs",
+        "UI_CORS_ORIGIN": "http://localhost:5173"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal"
+    }
+  ]
+}
